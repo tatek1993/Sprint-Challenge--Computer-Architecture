@@ -1,6 +1,7 @@
 """CPU functionality."""
 
 import sys
+import time
 
 HLT = 0b00000001
 PRN = 0b01000111
@@ -27,7 +28,7 @@ class CPU:
         self.reg = [0] * 8
         self.running = True
         self.pc = 0
-        self.fl = 0  # CMP flag
+        self.fl = 0b00000000  # CMP flag
         self.branchtable = {}
         self.branchtable[HLT] = self.handle_HLT
         self.branchtable[PRN] = self.handle_PRN
@@ -38,6 +39,10 @@ class CPU:
         self.branchtable[POP] = self.handle_POP
         self.branchtable[CALL] = self.handle_CALL
         self.branchtable[RET] = self.handle_RET
+        self.branchtable[JEQ] = self.handle_JEQ
+        self.branchtable[JNE] = self.handle_JNE
+        self.branchtable[JMP] = self.handle_JMP
+        self.branchtable[CMP] = self.handle_CMP
         self.reg[stack_pointer] = 0xf4
         # self.reg[sp] = 244
 
@@ -108,6 +113,29 @@ class CPU:
         self.pc = return_address
         self.reg[stack_pointer] += 1
 
+    def handle_JEQ(self, a, _b):
+        # if flag is equal
+        if self.fl == 0b00000001:
+            # jump to register we pass in
+            self.pc = self.reg[a]
+        else:
+            self.pc += 2
+
+    def handle_JNE(self, a, _b):
+        # if flag is not equal
+        if self.fl != 0b00000001:
+            # jump to register we pass in
+            self.pc = self.reg[a]
+        else:
+            self.pc += 2
+
+    def handle_JMP(self, a, b):
+        self.pc = self.reg[a]
+
+    def handle_CMP(self, a, b):
+        self.alu("CMP", a, b)
+        self.pc += 3
+
     def load(self, filename):
         """Load a program into memory."""
 
@@ -163,14 +191,15 @@ class CPU:
             # L
             # reg a less than reg b
             if self.reg[reg_a] < self.reg[reg_b]:
-
+                self.fl = 0b00000100
             # G
             # reg a greater than reg b
             elif self.reg[reg_a] > self.reg[reg_b]:
-
+                self.fl = 0b00000010
             # E
             # equal
             else:
+                self.fl = 0b00000001
 
         else:
             raise Exception("Unsupported ALU operation")
